@@ -7,7 +7,5 @@
 
 import Foundation
 
-struct Recipe: Decodable {
-	let ingredients: [String]
-	let meal: String
-}
+let service = EmojiMeals()
+service.loadRecipes()
