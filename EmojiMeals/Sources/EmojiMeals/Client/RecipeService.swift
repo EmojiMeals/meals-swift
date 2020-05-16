@@ -7,7 +7,12 @@
 
 import Foundation
 
+struct Recipee: Decodable {
+	var recipe: [String: String]
+}
+
 enum RecipeService {
+	static let recipeEndpoint = URL(string: "https://raw.githubusercontent.com/EmojiMeals/recipes/master/recipes.json")!
 	
 	enum ServiceError: Error {
 		case error(String)
@@ -20,45 +25,43 @@ enum RecipeService {
 		}
 	}
 	
-	static let recipeEndpoint = URL(string: "https://raw.githubusercontent.com/EmojiMeals/recipes/master/recipes.json")!
-	
 	static func get(completion: @escaping ((Result<[Recipe], ServiceError>) -> Void)) {
 		let endpoint = RecipeService.recipeEndpoint
-		print("Entering session")
 		URLSession.shared.dataTask(with: endpoint) { data, response, possibleError in
-			print("In session")
-			if let data = data, let jsonString = String(data: data, encoding: .utf8) {
-				print(jsonString)
+			if let error = possibleError {
+				let errorMessage = """
+					Received error when requesting recipes.
+					Error: \(error.localizedDescription)
+					URL: \(endpoint)
+					Response: \(String(describing: response))
+				"""
+				return completion(.failure(.error(errorMessage)))
 			}
+			
+			guard let data = data else {
+				return completion(.failure(.error("No data received in response")))
+			}
+			
+			var recipes: [Recipe] = []
+			do {
+				guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: String] else {
+					return completion(.failure(.error("Unable to serialize JSON response")))
+				}
+				
+				for (key, value) in json {
+					let recipe = Recipe(ingredients: key.map { String($0) }, meal: value)
+					recipes.append(recipe)
+				}
+			} catch {
+				let errorMessage = """
+					Unable to serialize JSON response.
+					Error: \(error.localizedDescription)
+					URL: \(endpoint)
+					Response: \(String(describing: response))
+				"""
+				return completion(.failure(.error(errorMessage)))
+			}
+			completion(.success(recipes))
 		}.resume()
 	}
 }
-
-/*
-if let error = possibleError {
-	let errorMessage = """
-		Received error when requesting recipes.
-		Error: \(error.localizedDescription)
-		URL: \(endpoint)
-		Response: \(String(describing: response))
-	"""
-	return completion(.failure(.error(errorMessage)))
-}
-
-let decoder = JSONDecoder()
-let recipes: [Recipe]
-
-do {
-	recipes = try decoder.decode([Recipe].self, from: data!)
-} catch {
-	let errorMessage = """
-		Received error when decoding data.
-		Error: \(error.localizedDescription)
-		URL: \(endpoint)
-		Response: \(String(describing: response))
-	"""
-	return completion(.failure(.error(errorMessage)))
-}
-
-return completion(.success(recipes))
-*/

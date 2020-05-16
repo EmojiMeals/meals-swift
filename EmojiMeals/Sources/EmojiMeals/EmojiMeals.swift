@@ -3,9 +3,19 @@ import Foundation
 class EmojiMeals {
 	var recipes: [Recipe] = []
 	
+	init(fetchRemoteRecipes: Bool = true) {
+		if fetchRemoteRecipes {
+			loadRecipes()
+		}
+	}
+	
 	func mealify(_ ingredients: String...) -> String {
-		// TODO: Add business logic
-		return ""
+		for recipe in recipes {
+			if ingredients.sorted() == recipe.ingredients.sorted() {
+				return recipe.meal
+			}
+		}
+		return ingredients.joined()
 	}
 	
 	func loadRecipes() {
